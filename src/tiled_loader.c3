@@ -10,9 +10,9 @@ import std::collections::object;
 // Load room JSON
 // ------------------------------------------------
 
-fn void load_room(Game* game, Room* room, String filename)
+fn void Room.load(&self, Game* game, String filename)
 {
-    clear_room(room);
+    self.clear();
 
     char[] file_data =
         file::load_temp(filename)!!;
@@ -45,14 +45,14 @@ fn void load_room(Game* game, Room* room, String filename)
         if(name == "Ground")
         {
             load_tile_layer(
-                room.ground[..],
+                self.ground[..],
                 layer
             );
         }
         else if(name == "Walls")
         {
             load_tile_layer(
-                room.walls[..],
+                self.walls[..],
                 layer
             );
         }
@@ -60,7 +60,7 @@ fn void load_room(Game* game, Room* room, String filename)
         {
             load_object_layer(
                 game,
-                room,
+                self,
                 layer
             );
         }
@@ -73,19 +73,19 @@ fn void load_room(Game* game, Room* room, String filename)
 // Clear room
 // ------------------------------------------------
 
-fn void clear_room(Room* room)
+fn void Room.clear(&self)
 {
-    room.object_count = 0;
-    room.enemy_count = 0;
-    room.exit_count = 0;
+    self.object_count = 0;
+    self.enemy_count = 0;
+    self.exit_count = 0;
 
 
     for(int i = 0;
         i < ROOM_TILE_WIDTH * ROOM_TILE_HEIGHT;
         i++)
     {
-        room.ground[i] = 0;
-        room.walls[i] = 0;
+        self.ground[i] = 0;
+        self.walls[i] = 0;
     }
 }
 
@@ -217,8 +217,7 @@ fn void load_object_layer(
 
         if(type == "spawn")
         {
-            set_player_position(
-                game,
+            game.player.set_position(
                 x,
                 y
             );
@@ -234,8 +233,7 @@ fn void load_object_layer(
 
         if(type == "enemyspawn")
         {
-            add_enemy(
-                room,
+            room.add_enemy(
                 x,
                 y
             );

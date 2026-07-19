@@ -135,25 +135,23 @@ fn String get_room_filename(int room_id)
 // --------------------
 // Player
 // --------------------
-fn void set_player_position(Game* game, float x, float y)
+fn void Player.set_position(&self, float x, float y)
 {
-    game.player.position.x = x;
-    game.player.position.y = y;
+    self.position.x = x;
+    self.position.y = y;
 }
-
 
 // --------------------
 // Enemy creation
 // --------------------
-
-fn void add_enemy(Room* room, float x, float y)
+fn void Room.add_enemy(&self, float x, float y)
 {
-    if (room.enemy_count >= MAX_ENEMIES)
+    if (self.enemy_count >= MAX_ENEMIES)
     {
         return;
     }
 
-    Enemy* enemy = &room.enemies[room.enemy_count];
+    Enemy* enemy = &self.enemies[self.enemy_count];
 
     enemy.position.x = x;
     enemy.position.y = y;
@@ -168,26 +166,26 @@ fn void add_enemy(Room* room, float x, float y)
 
     enemy.patrol_state = GO_RIGHT;
 
-    room.enemy_count++;
+    self.enemy_count++;
 }
 
 // --------------------
 // Init
 // --------------------
-fn void init_game(Game* game)
+fn void Game.init_game(&self)
 {
-    game.current_room_idx = 0;
+    self.current_room_idx = 0;
 
-    game.player.position.x = 100;
-    game.player.position.y = 100;
+    self.player.position.x = 100;
+    self.player.position.y = 100;
 
-    load_room(game, &game.world.rooms[0], get_room_filename(0));
+    self.world.rooms[0].load(self, get_room_filename(0));
 }
 
 // --------------------
 // Collision
 // --------------------
-fn bool is_wall(Room* room, int x, int y)
+fn bool Room.is_wall(&self, int x, int y)
 {
     if (x < 0 || y < 0)
     {
@@ -199,25 +197,24 @@ fn bool is_wall(Room* room, int x, int y)
         return true;
     }
 
-    return room.walls[y * ROOM_TILE_WIDTH + x] != 0;
+    return self.walls[y * ROOM_TILE_WIDTH + x] != 0;
 }
 
 // --------------------
 // Exits
 // --------------------
-
-fn void check_room_exits(Game* game)
+fn void Game.check_room_exits(&self)
 {
-    Room* room = &game.world.rooms[game.current_room_idx];
+    Room* room = &self.world.rooms[self.current_room_idx];
 
     for(int i = 0; i < room.exit_count; i++)
     {
         RoomExit* exit = &room.exits[i];
 
-        if(game.player.position.x >= exit.area.x &&
-           game.player.position.x <= exit.area.x + exit.area.width &&
-           game.player.position.y >= exit.area.y &&
-           game.player.position.y <= exit.area.y + exit.area.height)
+        if(self.player.position.x >= exit.area.x &&
+           self.player.position.x <= exit.area.x + exit.area.width &&
+           self.player.position.y >= exit.area.y &&
+           self.player.position.y <= exit.area.y + exit.area.height)
         {
 
             if(exit.target_room < 0 || exit.target_room >= WORLD_WIDTH * WORLD_HEIGHT)
@@ -225,13 +222,13 @@ fn void check_room_exits(Game* game)
                 return;
             }
 
-            game.current_room_idx = exit.target_room;
+            self.current_room_idx = exit.target_room;
 
-            load_room(game, &game.world.rooms[game.current_room_idx], get_room_filename(game.current_room_idx));
+            self.world.rooms[self.current_room_idx].load(self, get_room_filename(self.current_room_idx));
 
-            game.player.position.x = exit.target_x;
+            self.player.position.x = exit.target_x;
 
-            game.player.position.y = exit.target_y;
+            self.player.position.y = exit.target_y;
 
             return;
         }
@@ -241,55 +238,55 @@ fn void check_room_exits(Game* game)
 // -------------------
 // Player update
 // --------------------
-fn void update_player(Game* game, float delta_time)
+fn void Game.update_player(&self, float delta_time)
 {
     float speed = 60.0 * delta_time;
 
-    rl::RLVector2 next = game.player.position;
+    rl::RLVector2 next = self.player.position;
 
     if (rl::is_key_down(rl::RLKeyboardKey.D))
     {
         next.x += speed;
-        game.player.direction = EAST;
+        self.player.direction = EAST;
     }
 
     if (rl::is_key_down(rl::RLKeyboardKey.A))
     {
         next.x -= speed;
-        game.player.direction = WEST;
+        self.player.direction = WEST;
     }
 
     if (rl::is_key_down(rl::RLKeyboardKey.W))
     {
         next.y -= speed;
-        game.player.direction = NORTH;
+        self.player.direction = NORTH;
     }
 
     if (rl::is_key_down(rl::RLKeyboardKey.S))
     {
         next.y += speed;
-        game.player.direction = SOUTH;
+        self.player.direction = SOUTH;
     }
 
-    if (can_move(game, next))
+    if (self.can_move(next))
     {
-        game.player.position = next;
+        self.player.position = next;
     }
 }
 
-fn bool can_move(Game* game, rl::RLVector2 position)
+fn bool Game.can_move(&self, rl::RLVector2 position)
 {
-    Room* room = &game.world.rooms[game.current_room_idx];
+    Room* room = &self.world.rooms[self.current_room_idx];
 
     int left   = (int)position.x / TILE_SIZE;
     int right  = (int)(position.x + TILE_SIZE - 1) / TILE_SIZE;
     int top    = (int)position.y / TILE_SIZE;
     int bottom = (int)(position.y + TILE_SIZE - 1) / TILE_SIZE;
 
-    if (is_wall(room, left, top) ||
-        is_wall(room, right, top) ||
-        is_wall(room, left, bottom) ||
-        is_wall(room, right, bottom))
+    if (room.is_wall(left, top) ||
+        room.is_wall(right, top) ||
+        room.is_wall(left, bottom) ||
+        room.is_wall(right, bottom))
     {
         return false;
     }
@@ -322,11 +319,11 @@ fn bool can_move(Game* game, rl::RLVector2 position)
 // --------------------
 // Enemy movement
 // --------------------
-fn bool move_to(Game* game, Enemy* enemy, rl::RLVector2 target, float delta_time)
+fn bool Enemy.move_to(&self, Game* game, rl::RLVector2 target, float delta_time)
 {
     float speed = 50.0 * delta_time;
 
-    rl::RLVector2 next = enemy.position;
+    rl::RLVector2 next = self.position;
 
     if (next.x < target.x)
     {
@@ -378,19 +375,19 @@ fn bool move_to(Game* game, Enemy* enemy, rl::RLVector2 target, float delta_time
 
     if (!rl::check_collision_recs(enemy_rect, player_rect))
     {
-        enemy.position = next;
+        self.position = next;
     }
 
-    return enemy.position.x == target.x &&
-           enemy.position.y == target.y;
+    return self.position.x == target.x &&
+           self.position.y == target.y;
 }
 
 // --------------------
 // Enemy AI
 // --------------------
-fn void update_enemies(Game* game, float delta_time)
+fn void Game.update_enemies(&self, float delta_time)
 {
-    Room* room = &game.world.rooms[game.current_room_idx];
+    Room* room = &self.world.rooms[self.current_room_idx];
 
     for (usz i = 0; i < (usz)room.enemy_count; i++)
     {
@@ -399,28 +396,28 @@ fn void update_enemies(Game* game, float delta_time)
         switch (enemy.patrol_state)
         {
             case GO_RIGHT:
-                if (move_to(game, enemy, enemy.waypoint.right, delta_time))
+                if (enemy.move_to(self, enemy.waypoint.right, delta_time))
                 {
                     enemy.patrol_state = GO_START_FROM_RIGHT;
                 }
                 break;
 
             case GO_START_FROM_RIGHT:
-                if (move_to(game, enemy, enemy.waypoint.start, delta_time))
+                if (enemy.move_to(self, enemy.waypoint.start, delta_time))
                 {
                     enemy.patrol_state = GO_LEFT;
                 }
                 break;
 
             case GO_LEFT:
-                if (move_to(game, enemy, enemy.waypoint.left, delta_time))
+                if (enemy.move_to(self, enemy.waypoint.left, delta_time))
                 {
                     enemy.patrol_state = GO_START_FROM_LEFT;
                 }
                 break;
 
             case GO_START_FROM_LEFT:
-                if (move_to(game, enemy, enemy.waypoint.start, delta_time))
+                if (enemy.move_to(self, enemy.waypoint.start, delta_time))
                 {
                     enemy.patrol_state = GO_RIGHT;
                 }
@@ -432,19 +429,19 @@ fn void update_enemies(Game* game, float delta_time)
 // --------------------
 // Main update
 // --------------------
-fn void update(Game* game, float delta_time)
+fn void Game.update(&self, float delta_time)
 {
-    Room* room = &game.world.rooms[game.current_room_idx];
+    Room* room = &self.world.rooms[self.current_room_idx];
 
-    update_player(game, delta_time);
-    update_enemies(game, delta_time);    
-    check_room_exits(game);
+    self.update_player(delta_time);
+    self.update_enemies(delta_time);    
+    self.check_room_exits();
 }
 
 // --------------------
 // Drawing
 // --------------------
-fn void draw_room(Game* game, Room* room)
+fn void Game.draw_room(&self, Room* room)
 {
     for (usz i = 0; i < ROOM_TILE_WIDTH * ROOM_TILE_HEIGHT; i++)
     {
@@ -455,14 +452,14 @@ fn void draw_room(Game* game, Room* room)
 
         if (gid != 0)
         {
-            draw_tile(game, gid, x * TILE_SIZE, y * TILE_SIZE);
+            self.draw_tile(gid, x * TILE_SIZE, y * TILE_SIZE);
         }
 
         gid = room.walls[i];
 
         if (gid != 0)
         {
-            draw_tile(game, gid, x * TILE_SIZE, y * TILE_SIZE);
+            self.draw_tile(gid, x * TILE_SIZE, y * TILE_SIZE);
         }
     }
 }
@@ -485,26 +482,26 @@ fn void draw_objects(Room* room)
 }
 
 
-fn void draw_player(Game* game)
+fn void Game.draw_player(&self)
 {
     // rl::draw_rectangle((int)game.player.position.x, (int)game.player.position.y, TILE_SIZE, TILE_SIZE,rl::RED);
 
     rl::draw_texture(
-        game.player_texture,
-        (int)game.player.position.x,
-        (int)game.player.position.y,
+        self.player_texture,
+        (int)self.player.position.x,
+        (int)self.player.position.y,
         rl::WHITE
     );
 }
 
 
-fn void draw_enemies(Game* game, Room* room)
+fn void Game.draw_enemies(&self, Room* room)
 {
     foreach (enemy : room.enemies[..room.enemy_count-1])
     {
         // rl::draw_rectangle((int)enemy.position.x, (int)enemy.position.y, TILE_SIZE, TILE_SIZE, rl::ORANGE);
         rl::draw_texture(
-            game.enemy_texture,
+            self.enemy_texture,
             (int)enemy.position.x,
             (int)enemy.position.y,
             rl::WHITE
@@ -512,11 +509,7 @@ fn void draw_enemies(Game* game, Room* room)
     }
 }
 
-fn void draw_tile(
-    Game* game,
-    uint gid,
-    int x,
-    int y)
+fn void Game.draw_tile(&self, uint gid, int x, int y)
 {
     rl::RLTexture2D texture;
 
@@ -525,19 +518,19 @@ fn void draw_tile(
 
     if(gid >= 242)
     {
-        texture = game.door_texture;
+        texture = self.door_texture;
         first_gid = 242;
         columns = 10;
     }
     else if(gid >= 50)
     {
-        texture = game.wall_texture;
+        texture = self.wall_texture;
         first_gid = 50;
         columns = 24;
     }
     else
     {
-        texture = game.floor_texture;
+        texture = self.floor_texture;
         first_gid = 1;
         columns = 7;
     }
@@ -565,14 +558,9 @@ fn void draw_tile(
     );
 }
 
-fn void draw_lighting(
-    Game* game,
-    float offset_x,
-    float offset_y,
-    float render_width,
-    float render_height)
+fn void Game.draw_lighting(&self, float offset_x, float offset_y, float render_width, float render_height)
 {
-    rl::begin_texture_mode(game.light_mask);
+    rl::begin_texture_mode(self.light_mask);
 
     rl::clear_background(
         (rl::RLColor)
@@ -603,8 +591,8 @@ fn void draw_lighting(
     rl::begin_blend_mode(rl::RLBlendMode.SUBTRACT_COLORS);
 
     rl::draw_circle(
-        (int)game.player.position.x + TILE_SIZE / 2,
-        (int)game.player.position.y + TILE_SIZE / 2,
+        (int)self.player.position.x + TILE_SIZE / 2,
+        (int)self.player.position.y + TILE_SIZE / 2,
         120,
         rl::RAYWHITE
     );
@@ -616,7 +604,7 @@ fn void draw_lighting(
 
     // Draw mask using same scaling as world
     rl::draw_texture_pro(
-        game.light_mask.texture,
+        self.light_mask.texture,
 
         (rl::RLRectangle)
         {
@@ -645,13 +633,13 @@ fn void draw_lighting(
     );
 }
 
-fn void draw(Game* game)
+fn void Game.draw(&self)
 {
-    Room* room = &game.world.rooms[game.current_room_idx];
+    Room* room = &self.world.rooms[self.current_room_idx];
 
-    draw_room(game, room);
-    draw_player(game);
-    draw_enemies(game, room);
+    self.draw_room(room);
+    self.draw_player();
+    self.draw_enemies(room);
 }
 
 // -------------------
@@ -685,19 +673,19 @@ fn int main(String[] args)
 
     rl::set_target_fps(60);
 
-    init_game(&game);
+    Game.init_game(&game);
 
     while (!rl::window_should_close())
     {
         float delta_time = rl::get_frame_time();
-        update(&game, delta_time);
+        game.update(delta_time);
 
         // Draw world into render target
         rl::begin_texture_mode(game.render_target);
 
         rl::clear_background(rl::BLACK);
 
-        draw(&game);
+        game.draw();
 
         rl::end_texture_mode();
 
@@ -751,8 +739,7 @@ fn int main(String[] args)
 
 
         // Draw darkness/light mask ON TOP
-        draw_lighting(
-            &game,
+        game.draw_lighting(
             offset_x,
             offset_y,
             render_width,

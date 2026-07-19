@@ -2,6 +2,7 @@ module myc3test;
 
 import std::io;
 import raylib6::rl;
+import std::core::mem;
 
 // --------------------
 // Constants
@@ -105,6 +106,7 @@ struct Game
     Player player;
     World world;
     int current_room_idx;
+
     rl::RLTexture2D floor_texture;
     rl::RLTexture2D wall_texture;
     rl::RLTexture2D door_texture;
@@ -179,7 +181,11 @@ fn void Game.init_game(&self)
     self.player.position.x = 100;
     self.player.position.y = 100;
 
-    self.world.rooms[0].load(self, get_room_filename(0));
+	// init world rooms - check for errors
+    if(!self.world.rooms[0].load(self, get_room_filename(0)))
+	{
+		io::printn("Failed to load starting room");
+	}
 }
 
 // --------------------
@@ -497,7 +503,7 @@ fn void Game.draw_player(&self)
 
 fn void Game.draw_enemies(&self, Room* room)
 {
-    foreach (enemy : room.enemies[..room.enemy_count-1])
+    foreach (enemy : room.enemies[..room.enemy_count])
     {
         // rl::draw_rectangle((int)enemy.position.x, (int)enemy.position.y, TILE_SIZE, TILE_SIZE, rl::ORANGE);
         rl::draw_texture(
@@ -572,7 +578,6 @@ fn void Game.draw_lighting(&self, float offset_x, float offset_y, float render_w
         }
     );
 
-
     rl::draw_rectangle(
         0,
         0,
@@ -587,7 +592,6 @@ fn void Game.draw_lighting(&self, float offset_x, float offset_y, float render_w
         }
     );
 
-
     rl::begin_blend_mode(rl::RLBlendMode.SUBTRACT_COLORS);
 
     rl::draw_circle(
@@ -601,11 +605,9 @@ fn void Game.draw_lighting(&self, float offset_x, float offset_y, float render_w
 
     rl::end_texture_mode();
 
-
     // Draw mask using same scaling as world
     rl::draw_texture_pro(
         self.light_mask.texture,
-
         (rl::RLRectangle)
         {
             0,
@@ -642,18 +644,34 @@ fn void Game.draw(&self)
     self.draw_enemies(room);
 }
 
+<*
+Returns the quotient of two integers.
+@param a: "Dividend"
+@param b: "Divisor"
+@require b != 0
+@ensure return * b == a
+*>
+fn int divide(int a, int b)
+{
+    return a / b;
+}
 // -------------------
 // Main
 // --------------------
 fn int main(String[] args)
 {
+	int result = divide(20, 5);
+    io::printn(result); // Prints: 4
+
     Game game;
 
+	// window things
     rl::set_config_flags(RLConfigFlag.WINDOW_RESIZABLE);
 
     rl::init_window(SCREEN_WIDTH, SCREEN_HEIGHT, "C3 Adventure");
     defer rl::close_window();
 
+	// loading textures
     game.floor_texture = rl::load_texture("resources/assets/tilesets/Floor.png");
     game.wall_texture = rl::load_texture("resources/assets/tilesets/Walls.png");
     game.door_texture = rl::load_texture("resources/assets/tilesets/DoorsAndWalls.png");
@@ -665,6 +683,7 @@ fn int main(String[] args)
     defer rl::unload_texture(game.player_texture);
     defer rl::unload_texture(game.enemy_texture);
 
+	// load renders
     game.render_target = rl::load_render_texture(SCREEN_WIDTH, SCREEN_HEIGHT);
     defer rl::unload_render_texture(game.render_target);
 
@@ -673,11 +692,14 @@ fn int main(String[] args)
 
     rl::set_target_fps(60);
 
+	// init game instance
     Game.init_game(&game);
 
     while (!rl::window_should_close())
     {
+		// get dt
         float delta_time = rl::get_frame_time();
+
         game.update(delta_time);
 
         // Draw world into render target
@@ -694,7 +716,7 @@ fn int main(String[] args)
 
         rl::clear_background(rl::BLACK);
 
-
+		// scaling window resizes game
         float scale_x = (float)rl::get_screen_width() / (float)SCREEN_WIDTH;
         float scale_y = (float)rl::get_screen_height() / (float)SCREEN_HEIGHT;
 
@@ -710,7 +732,6 @@ fn int main(String[] args)
         // Draw game world
         rl::draw_texture_pro(
             game.render_target.texture,
-
             (rl::RLRectangle)
             {
                 0,
@@ -718,7 +739,6 @@ fn int main(String[] args)
                 SCREEN_WIDTH,
                 -SCREEN_HEIGHT
             },
-
             (rl::RLRectangle)
             {
                 offset_x,
@@ -726,17 +746,14 @@ fn int main(String[] args)
                 render_width,
                 render_height
             },
-
             (rl::RLVector2)
             {
                 0,
                 0
             },
-
             0,
             rl::RAYWHITE
         );
-
 
         // Draw darkness/light mask ON TOP
         game.draw_lighting(

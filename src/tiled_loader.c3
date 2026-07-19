@@ -5,143 +5,112 @@ import std::io::file;
 import std::encoding::json;
 import std::collections::object;
 
-
 // ------------------------------------------------
-// Load room JSON
+// Load room from JSON
 // ------------------------------------------------
-
-fn void Room.load(&self, Game* game, String filename)
+fn bool Room.load(&self, Game* game, String filename)
 {
-    self.clear();
+    Room temp;
+    temp.clear();
 
-    char[] file_data =
-        file::load_temp(filename)!!;
+    @pool()
+	{
+		char[] file_data = file::load_temp(filename)!!;
 
+		String json_text = (String)file_data;
 
-    String json_text =
-        (String)file_data;
+		Object* root = json::tparse(json_text)!!;
 
+		Object* layers = root.get("layers")!!;
 
-    Object* root =
-        json::tparse(json_text)!!;
+		for(sz i = 0; i < layers.get_len(); i++)
+		{
+			Object* layer = layers.get_at(i);
 
+			String name = layer.get_string("name")!!;
 
-    Object* layers =
-        root.get("layers")!!;
+			if(name == "Ground")
+			{
+				load_tile_layer(temp.ground[..], layer);
+			}
+			else if(name == "Walls")
+			{
+				load_tile_layer(temp.walls[..], layer);
+			}
+			else if(name == "Objects")
+			{
+				load_object_layer(game, &temp, layer);
+			}
+		}
+	};
 
+    // only replace room after successful load
+    *self = temp;
 
-
-    for(sz i = 0; i < layers.get_len(); i++)
-    {
-        Object* layer =
-            layers.get_at(i);
-
-
-        String name =
-            layer.get_string("name")!!;
-
-
-
-        if(name == "Ground")
-        {
-            load_tile_layer(
-                self.ground[..],
-                layer
-            );
-        }
-        else if(name == "Walls")
-        {
-            load_tile_layer(
-                self.walls[..],
-                layer
-            );
-        }
-        else if(name == "Objects")
-        {
-            load_object_layer(
-                game,
-                self,
-                layer
-            );
-        }
-    }
+    return true;
 }
-
-
 
 // ------------------------------------------------
 // Clear room
 // ------------------------------------------------
-
 fn void Room.clear(&self)
 {
     self.object_count = 0;
     self.enemy_count = 0;
     self.exit_count = 0;
 
-
-    for(int i = 0;
-        i < ROOM_TILE_WIDTH * ROOM_TILE_HEIGHT;
-        i++)
+    for(int i = 0; i < ROOM_TILE_WIDTH * ROOM_TILE_HEIGHT; i++)
     {
         self.ground[i] = 0;
         self.walls[i] = 0;
     }
+
+    for(int i = 0; i < MAX_OBJECTS; i++)
+    {
+        self.objects[i] = {};
+    }
+
+    for(int i = 0; i < MAX_ENEMIES; i++)
+    {
+        self.enemies[i] = {};
+    }
+
+    for(int i = 0; i < MAX_EXITS; i++)
+    {
+        self.exits[i] = {};
+    }
 }
-
-
 
 // ------------------------------------------------
 // Load tile layer
 // ------------------------------------------------
-
-fn void load_tile_layer(
-    uint[] target,
-    Object* layer)
+fn void load_tile_layer(uint[] target, Object* layer)
 {
-    Object* data =
-        layer.get("data")!!;
-
+    Object* data = layer.get("data")!!;
 
     for(sz i = 0; i < data.get_len(); i++)
     {
-        target[i] =
-            data.get_uint_at(i)!!;
+        target[i] = data.get_uint_at(i)!!;
     }
 }
-
-
 
 // ------------------------------------------------
 // Read object property
 // ------------------------------------------------
-
-fn int get_property_int(
-    Object* object,
-    String property_name)
+fn int get_property_int(Object* object, String property_name)
 {
     if(!object.has_key("properties"))
     {
         return 0;
     }
 
-
-    Object* properties =
-        object.get("properties")!!;
-
-
+    Object* properties = object.get("properties")!!;
 
     for(sz i = 0; i < properties.get_len(); i++)
     {
-        Object* property =
-            properties.get_at(i);
+        Object* property = properties.get_at(i);
 
-
-
-        String name =
-            property.get_string("name")!!;
-
-
+        String name = property.get_string("name")!!;
 
         if(name == property_name)
         {
@@ -149,99 +118,64 @@ fn int get_property_int(
         }
     }
 
-
     return 0;
 }
-
-
 
 // ------------------------------------------------
 // Load object layer
 // ------------------------------------------------
-
-fn void load_object_layer(
-    Game* game,
-    Room* room,
-    Object* layer)
+fn void load_object_layer(Game* game, Room* room, Object* layer)
 {
-    Object* objects =
-        layer.get("objects")!!;
-
-
+    Object* objects = layer.get("objects")!!;
 
     for(sz i = 0; i < objects.get_len(); i++)
     {
-        Object* source =
-            objects.get_at(i);
-
-
+        Object* source = objects.get_at(i);
 
         String type = "";
 
 		if(source.has_key("properties"))
 		{
-			Object* properties =
-				source.get("properties")!!;
+			Object* properties = source.get("properties")!!;
 
 			for(sz j = 0; j < properties.get_len(); j++)
 			{
-				Object* property =
-					properties.get_at(j);
+				Object* property = properties.get_at(j);
 
-				String name =
-					property.get_string("name")!!;
+				String name = property.get_string("name")!!;
 
 				if(name == "type")
 				{
-					type =
-						property.get_string("value")!!;
+					type = property.get_string("value")!!;
 					break;
 				}
 			}
 		}
 
+        float x = (float)source.get_float("x")!!;
 
 
-        float x =
-            (float)source.get_float("x")!!;
-
-
-        float y =
-            (float)source.get_float("y")!!;
-
-
+        float y = (float)source.get_float("y")!!;
 
         // -------------------------
         // Player spawn
         // -------------------------
-
         if(type == "spawn")
         {
-            game.player.set_position(
-                x,
-                y
-            );
+            game.player.set_position(x, y);
 
             continue;
         }
-
-
 
         // -------------------------
         // Enemy spawn
         // -------------------------
-
         if(type == "enemyspawn")
         {
-            room.add_enemy(
-                x,
-                y
-            );
+            room.add_enemy(x, y);
 
             continue;
         }
-
-
 
         // -------------------------
         // Exit
@@ -254,13 +188,11 @@ fn void load_object_layer(
                 continue;
             }
 
-            RoomExit* exit =
-                &room.exits[room.exit_count];
+            RoomExit* exit = &room.exits[room.exit_count];
 
 			float width = (float)source.get_float("width")!!;
 
-			float height =
-				(float)source.get_float("height")!!;
+			float height = (float)source.get_float("height")!!;
 
 			if(width == 0)
 			{
@@ -278,95 +210,62 @@ fn void load_object_layer(
 			exit.area.height = height;
 
             exit.target_room =
-                get_property_int(
-                    source,
-                    "target_room"
-                );
-
+                get_property_int(source, "target_room");
 
             exit.target_x =
-                get_property_int(
-                    source,
-                    "target_x"
-                );
-
+                get_property_int(source, "target_x");
 
             exit.target_y =
-                get_property_int(
-                    source,
-                    "target_y"
-                );
-
+                get_property_int(source, "target_y");
 
             room.exit_count++;
-
 
             continue;
         }
 
-
-
         // -------------------------
         // Normal object
         // -------------------------
-
         if(room.object_count >= MAX_OBJECTS)
         {
             continue;
         }
 
+        GameObject* obj = &room.objects[room.object_count];
 
-
-        GameObject* obj =
-            &room.objects[room.object_count];
-
-
-
-        obj.type =
-            parse_object_type(type);
-
+        obj.type = parse_object_type(type);
 
         obj.position.x = x;
-
         obj.position.y = y;
-
 
         room.object_count++;
     }
 }
 
-
-
 // ------------------------------------------------
 // Object type parser
 // ------------------------------------------------
-
-fn GameObjectType parse_object_type(
-    String type)
+fn GameObjectType parse_object_type(String type)
 {
     if(type == "item")
     {
         return ITEM;
     }
 
-
     if(type == "enemyspawn")
     {
         return ENEMYSPAWN;
     }
-
 
     if(type == "exit")
     {
         return EXIT;
     }
 
-
     if(type == "spawn")
     {
         return SPAWN;
     }
-
 
     return ITEM;
 }

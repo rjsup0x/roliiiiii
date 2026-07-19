@@ -1,0 +1,60 @@
+build/
+out/
+
+# Build output
+build/
+bin/
+out/
+dist/
+
+# C3 cache/intermediate files
+.cache/
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dylib
+*.dll
+*.exe
+
+# Debug symbols
+*.pdb
+*.dSYM/
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+*~
+
+# IDEs
+.vscode/
+.idea/
+*.iml
+
+# Visual Studio
+.vs/
+
+# Xcode
+DerivedData/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment files
+.env
+.env.*
+
+# Coverage/profiling
+coverage/
+*.prof
+*.gcda
+*.gcno
+*.gcov
